@@ -1,0 +1,54 @@
+# ============================================================
+# 🛡️ Nexus Auto Dealership — Root .gitignore
+# ============================================================
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment & Secrets (BẢO MẬT TUYỆT ĐỐI)
+.env
+.env.*
+*.env
+*.env.*
+server/.env
+server/.env.*
+client/.env
+client/.env.*
+!.env.example
+!server/.env.example
+!client/.env.example
+
+# Build outputs
+dist/
+*/dist/
+build/
+*/build/
+dist-ssr/
+
+# Prisma engine & generated files
+server/src/generated/
+
+# Uploads & Temp
+server/public/uploads/*
+!server/public/uploads/.gitkeep
+
+# Database Backups (Chứa dữ liệu nội bộ)
+scripts/backups/
+server/scripts/backups/
+*.bak
+*.dump
+
+# Logs & Cache
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+.tmp/
+node_modules/.tmp/
+
+# IDE & System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

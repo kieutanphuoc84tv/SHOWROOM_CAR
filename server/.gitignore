@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env*
+!.env.example
+
+# Build output
+dist/
+
+# Uploads
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Backups
+scripts/backups/
+
+# Logs
+*.log
+npm-debug.log*
