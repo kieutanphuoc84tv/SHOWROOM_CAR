@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # ── PostgreSQL Database ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: nexus-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nexusauto
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_password_change_me
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend API Server ──
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: nexus-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://nexus:nexus_password_change_me@postgres:5432/nexusauto"
+      DIRECT_URL: "postgresql://nexus:nexus_password_change_me@postgres:5432/nexusauto"
+      JWT_SECRET: "change-this-to-a-secure-random-string-min-32-chars"
+      JWT_EXPIRES_IN: "7d"
+      CLIENT_URL: "http://localhost:5173"
+      PORT: 5000
+      NODE_ENV: production
+    ports:
+      - "5000:5000"
+    volumes:
+      - uploads:/app/public/uploads
+
+  # ── Frontend Client ──
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "http://localhost:5000"
+    container_name: nexus-web
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata:
+  uploads:

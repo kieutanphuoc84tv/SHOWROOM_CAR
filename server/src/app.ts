@@ -22,6 +22,10 @@ import userRoutes from './routes/user.route';
 import depositRoutes from './routes/deposit.route';
 import quotationRoutes from './routes/quotation.route';
 import invoiceRoutes from './routes/invoice.route';
+import blogRoutes from './routes/blog.route';
+import promotionRoutes from './routes/promotion.route';
+import notificationRoutes from './routes/notification.route';
+import auditlogRoutes from './routes/auditlog.route';
 
 dotenv.config();
 
@@ -92,6 +96,10 @@ app.use('/api/users', userRoutes);
 app.use('/api/deposits', depositRoutes);
 app.use('/api/quotations', quotationRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/blogs', blogRoutes);
+app.use('/api/promotions', promotionRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/audit-logs', auditlogRoutes);
 
 // ── 7. Centralized Error & 404 Handlers ───────────────────────
 app.use(notFoundHandler);

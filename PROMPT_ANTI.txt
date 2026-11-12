@@ -1,0 +1,281 @@
+============================================================
+ PROMPT DÀNH CHO ANTI / ANTIGRAVITY PLUS (GOOGLE GEMINI)
+ Đồ án: NEXUS AUTO — Hệ thống Quản lý Showroom Ô tô
+ Tác giả: kieutanphuoc84tv
+============================================================
+
+Bạn là một Senior Full-Stack Developer chuyên về Node.js + React + TypeScript + Prisma + PostgreSQL. Tôi đang xây dựng đồ án cá nhân "NEXUS AUTO" — một hệ thống website quản lý showroom ô tô cao cấp với trải nghiệm 3D. Dự án hiện tại đã hoàn thành khoảng 60%, nhưng còn nhiều lỗi và thiếu sót cần bổ sung. Hãy giúp tôi hoàn thiện từng phần một theo thứ tự ưu tiên bên dưới.
+
+============================================================
+ PHẦN 1: SỬA LỖI NGHIÊM TRỌNG (BẮT BUỘC LÀM TRƯỚC)
+============================================================
+
+1.1. SỬA FILE `server/prisma/schema.prisma`
+- File hiện tại bị DUPLICATE nhiều enum và model. Cụ thể:
+  * Enum `Role` khai báo USER, ADMIN, SALES 2 lần → Xóa trùng, giữ 1 lần
+  * Enum `VehicleStatus` khai báo AVAILABLE, RESERVED, SOLD 2 lần → Xóa trùng, thêm UNAVAILABLE
+  * Enum `PaymentMethod` khai báo CASH 2 lần → Xóa trùng
+  * Enum `DepositStatus`, `QuotationStatus`, `InvoiceStatus` xuất hiện 2 lần (1 lần có comment, 1 lần không) → Giữ lại phần có comment, xóa phần trùng
+  * Model `Payment` xuất hiện 2 lần (lần 1 đơn giản, lần 2 có thêm invoiceId, depositId) → Giữ lại lần 2 (đầy đủ hơn), xóa lần 1
+  * Model `User` có fields bị duplicate (myLeads, assignedLeads, testDrives, deposits, quotations, invoices khai báo 2 lần) → Xóa trùng
+  * Model `Vehicle` có fields bị duplicate (id, brandId, categoryId... khai báo 2 lần) → Giữ phần đầy đủ hơn (có vin, trim, condition, costPrice, drivetrain, interiorColor, warrantyInfo, isDeleted, deletedAt), xóa phần trùng
+  * Model `Lead` có fields bị duplicate (vehicleId, customerId, assignedToId, guestName...) → Xóa trùng
+  * Model `Deposit` có relation bị duplicate → Xóa trùng
+  * Model `Invoice` có relation bị duplicate → Xóa trùng
+  * Model `FinanceApplication` có fields bị duplicate → Xóa trùng
+- Hãy tạo lại file schema.prisma HOÀN CHỈNH, KHÔNG DUPLICATE, với tất cả models:
+  User, Brand, Category, Vehicle, VehicleImage, Lead, TestDrive, FinanceApplication, Deposit, Quotation, Invoice, Payment, Promotion, BlogPost, Notification, AuditLog, CustomerInteraction
+- Mỗi model phải có đầy đủ @@index cho các trường hay query
+- Sử dụng @@map cho tên bảng snake_case
+
+1.2. SỬA FILE `server/prisma/seed.ts`
+- File hiện tại bị duplicate code cũ + mới xen kẽ (ví dụ biến `admin` vs tạo user mới, `vehicle` vs `v1`)
+- Hãy viết lại hoàn chỉnh seed.ts với:
+  * Dọn dẹp dữ liệu cũ đúng thứ tự foreign key
+  * Tạo 3 users: 1 Admin, 2 Sales
+  * Tạo 6 Brands (Ford, Toyota, Mercedes-Benz, VinFast, Porsche, Audi)
+  * Tạo 5 Categories (SUV, Sedan, Coupe, EV, MPV)
+  * Tạo 6-8 Vehicles mẫu với thông số kỹ thuật thực tế Việt Nam (giá VNĐ), kèm ảnh
+  * Tạo 3-4 Leads mẫu
+  * Tạo 2 TestDrive mẫu
+  * Tạo 2 Promotions mẫu
+  * Tạo 1 BlogPost mẫu
+  * Tạo 1 Deposit mẫu + 1 Quotation mẫu + 1 Invoice mẫu
+
+============================================================
+ PHẦN 2: THÊM ZOD VALIDATION CHO TẤT CẢ MODULES
+============================================================
+
+Tạo các file validation trong `server/src/validations/`:
+- `vehicle.validation.ts`: createVehicleSchema, updateVehicleSchema (validate: model, year >= 2000, price > 0, fuelType enum, transmission enum, color required...)
+- `lead.validation.ts`: createLeadSchema (guestPhone bắt buộc, guestName bắt buộc, type enum)
+- `testdrive.validation.ts`: createTestDriveSchema (customerName, customerPhone, scheduledDate phải là future date)
+- `deposit.validation.ts`: createDepositSchema, updateDepositStatusSchema
+- `quotation.validation.ts`: createQuotationSchema (vehiclePrice, totalAmount required, validUntil future date)
+- `invoice.validation.ts`: createInvoiceSchema, updateInvoiceStatusSchema
+- `finance.validation.ts`: createFinanceSchema (loanAmount > 0, loanTermMonths > 0)
+- `payment.validation.ts`: createPaymentSchema (amount > 0, method enum)
+- `user.validation.ts`: updateUserSchema (role chỉ ADMIN mới đổi được)
+- `blog.validation.ts`: createBlogPostSchema, updateBlogPostSchema
+- `promotion.validation.ts`: createPromotionSchema (startDate < endDate, discountValue > 0)
+
+Mỗi validation file export cả createSchema và updateSchema (update dùng .partial()).
+Sử dụng middleware `validate(schema)` đã có sẵn tại `server/src/middlewares/validate.middleware.ts` để gắn vào routes.
+
+============================================================
+ PHẦN 3: THÊM API ROUTES CÒN THIẾU
+============================================================
+
+3.1. Blog API (`server/src/controllers/blog.controller.ts` + `server/src/routes/blog.route.ts`):
+- GET /api/blogs — List blog posts (public, chỉ isPublished=true, pagination, search by title)
+- GET /api/blogs/:slug — Get blog post by slug (public)
+- POST /api/blogs — Create blog post (ADMIN only)
+- PUT /api/blogs/:id — Update blog post (ADMIN only)
+- DELETE /api/blogs/:id — Delete blog post (ADMIN only)
+- PATCH /api/blogs/:id/publish — Toggle publish (ADMIN only)
+
+3.2. Promotion API (`server/src/controllers/promotion.controller.ts` + `server/src/routes/promotion.route.ts`):
+- GET /api/promotions — List promotions (public, filter active)
+- GET /api/promotions/:id — Get promotion detail
+- POST /api/promotions — Create (ADMIN only)
+- PUT /api/promotions/:id — Update (ADMIN only)
+- DELETE /api/promotions/:id — Delete (ADMIN only)
+
+3.3. Notification API (`server/src/controllers/notification.controller.ts` + `server/src/routes/notification.route.ts`):
+- GET /api/notifications — List notifications cho user hiện tại (authenticate)
+- PATCH /api/notifications/:id/read — Mark as read
+- PATCH /api/notifications/read-all — Mark all as read
+- GET /api/notifications/unread-count — Đếm số thông báo chưa đọc
+
+3.4. AuditLog API (`server/src/controllers/auditlog.controller.ts` + `server/src/routes/auditlog.route.ts`):
+- GET /api/audit-logs — List audit logs (ADMIN only, pagination, filter by entity/user/date range)
+
+Đăng ký tất cả routes mới vào `server/src/app.ts`.
+
+============================================================
+ PHẦN 4: THÊM SERVICE LAYER
+============================================================
+
+Tạo folder `server/src/services/` với các service tách biệt logic nghiệp vụ:
+- `vehicle.service.ts`: Logic soft-delete, tính toán featured, filter/pagination
+- `lead.service.ts`: Logic auto-assign sales (round-robin), chuyển status, tạo Notification khi có Lead mới
+- `deposit.service.ts`: Logic tạo deposit tự động set expiresAt = 7 ngày, check expired deposits
+- `quotation.service.ts`: Logic tự động tính totalAmount = vehiclePrice + registrationFee + insuranceFee + accessories - discount
+- `invoice.service.ts`: Logic tự động generate invoiceNumber theo format "INV-YYYYMMDD-XXXX", tạo Notification
+- `payment.service.ts`: Logic cập nhật status Invoice/Deposit khi payment COMPLETED
+- `notification.service.ts`: Helper tạo notification cho user cụ thể
+- `audit.service.ts`: Helper ghi audit log
+
+Refactor controllers để gọi service thay vì gọi Prisma trực tiếp.
+
+============================================================
+ PHẦN 5: HOÀN THIỆN FRONTEND PAGES CÒN PLACEHOLDER
+============================================================
+
+5.1. `client/src/pages/AboutPage.tsx` — Trang Giới thiệu công ty:
+- Hero banner với tagline "Tiên phong trong trải nghiệm ô tô cao cấp"
+- Section "Câu chuyện Nexus Auto" (story timeline: 2018 thành lập → 2020 mở rộng → 2024 dẫn đầu)
+- Section "Giá trị cốt lõi" (4 cards: Uy tín, Tận tâm, Minh bạch, Đổi mới)
+- Section "Đội ngũ lãnh đạo" (grid 3-4 thành viên với ảnh, chức danh)
+- Section "Thành tựu" (số liệu: 5000+ xe bán ra, 15+ đối tác, 98% hài lòng)
+- CTA "Liên hệ ngay"
+
+5.2. `client/src/pages/BlogPage.tsx` — Trang Blog/Tin tức:
+- Gọi API GET /api/blogs (public)
+- Grid 3 cột hiển thị blog cards (cover image, title, excerpt, author, publishedAt)
+- Click vào card → navigate tới /blog/:slug
+- Tạo thêm trang `BlogDetailPage.tsx` tại /blog/:slug:
+  * Render full content, cover image, author info
+  * Related posts section
+  * Social share buttons
+
+5.3. `client/src/pages/TradeInPage.tsx` — Trang Định giá xe cũ:
+- Multi-step form (3 bước):
+  * Bước 1: Thông tin xe cũ (hãng, model, năm, số km, tình trạng)
+  * Bước 2: Upload ảnh xe (4-6 ảnh)
+  * Bước 3: Thông tin liên hệ + gửi form
+- Kết quả estimate giá (dựa trên logic đơn giản: giá gốc * depreciation rate theo năm)
+- Gửi form → POST /api/leads (type: INQUIRY)
+
+5.4. `client/src/pages/FinancePage.tsx` — Trang Tư vấn trả góp:
+- Calculator tương tác:
+  * Input: Giá xe, Tỷ lệ vay (slider 30-80%), Thời hạn (12-84 tháng), Lãi suất
+  * Output: Trả trước, Vay, Trả góp/tháng (gốc + lãi), Tổng trả
+  * Công thức: PMT = P × r(1+r)^n / ((1+r)^n - 1)
+- Table so sánh các gói vay (5 năm, 7 năm)
+- Form đăng ký tư vấn trả góp → POST /api/finance
+- Section "Ngân hàng liên kết" (logo grid 4-6 ngân hàng)
+
+============================================================
+ PHẦN 6: HOÀN THIỆN HỆ THỐNG AUTH
+============================================================
+
+6.1. Kích hoạt trang Admin Login:
+- Sửa `client/src/App.tsx`: Bỏ redirect `/admin/login` → `/`, thay bằng component `AdminLoginPage`
+- `AdminLoginPage.tsx` đã có sẵn (125 dòng), kiểm tra và đảm bảo:
+  * Form email + password
+  * Gọi POST /api/auth/login
+  * Lưu token vào localStorage('admin_token')
+  * Redirect tới /admin/dashboard sau khi login thành công
+  * Hiển thị lỗi khi sai mật khẩu
+
+6.2. Thêm Forgot Password:
+- Backend: POST /api/auth/forgot-password (gửi email reset link)
+- Backend: POST /api/auth/reset-password (validate token + set new password)
+- Frontend: ForgotPasswordPage + ResetPasswordPage
+
+6.3. Thêm Auth Guard cho Admin Routes:
+- Tạo `ProtectedRoute.tsx` component:
+  * Check localStorage('admin_token') hoặc gọi GET /api/auth/me
+  * Nếu chưa login → redirect /admin/login
+  * Nếu role !== ADMIN → redirect / (hoặc 403 page)
+- Wrap tất cả admin routes trong ProtectedRoute
+
+============================================================
+ PHẦN 7: THÊM TÍNH NĂNG NÂNG CAO
+============================================================
+
+7.1. Server-side Pagination + Search + Filter cho Vehicles:
+- GET /api/vehicles?page=1&limit=12&search=toyota&brandId=1&categoryId=2&minPrice=500000000&maxPrice=2000000000&status=AVAILABLE&sort=price_asc
+- Trả về { data: Vehicle[], total: number, page: number, totalPages: number }
+- Frontend VehiclesPage: Thêm pagination component + URL sync
+
+7.2. PDF Export cho Invoice & Quotation:
+- Cài đặt `pdfkit` hoặc `@react-pdf/renderer`
+- Backend: GET /api/invoices/:id/pdf → stream PDF
+- Frontend: Nút "Xuất PDF" trong InvoiceManagerPage và QuotationManagerPage
+- Template PDF chuyên nghiệp với logo, thông tin showroom, bảng chi tiết
+
+7.3. Dashboard Real-time Stats:
+- Thêm endpoint GET /api/dashboard/stats:
+  * Tổng doanh thu tháng này
+  * Số xe bán được
+  * Số leads mới
+  * Tỷ lệ chuyển đổi
+  * Top 5 xe bán chạy
+  * Biểu đồ doanh thu 12 tháng
+- Frontend AdminDashboardPage: Đã có Recharts, kết nối API thật
+
+7.4. Customer Interaction Timeline:
+- Trong LeadManagerPage, khi click vào 1 lead:
+  * Hiện timeline các interactions (CALL, EMAIL, SMS, NOTE, MEETING)
+  * Form thêm interaction mới
+  * CRUD interactions
+
+7.5. Image Upload & Management:
+- Hoàn thiện upload.middleware.ts (đã có Multer)
+- VehicleManagerPage: Drag & drop upload nhiều ảnh
+- Preview, reorder, set primary image
+- Xóa ảnh
+
+============================================================
+ PHẦN 8: DEVOPS & TESTING
+============================================================
+
+8.1. Docker:
+- Tạo `docker-compose.yml` với 3 services: postgres, server, client
+- Tạo `Dockerfile` cho server (multi-stage build)
+- Tạo `Dockerfile` cho client (nginx serve static)
+- Tạo `.dockerignore`
+
+8.2. CI/CD:
+- Tạo `.github/workflows/ci.yml`:
+  * Checkout code
+  * Setup Node.js 20
+  * Install dependencies (server + client)
+  * Run linting
+  * Run tests
+  * Build TypeScript
+  * Build Vite production
+
+8.3. Unit Tests:
+- Cài đặt Vitest cho cả server và client
+- Tạo tests cho:
+  * `server/src/validations/*.test.ts` — Test tất cả Zod schemas
+  * `server/src/controllers/auth.test.ts` — Test login, getMe, logout
+  * `server/src/controllers/vehicle.test.ts` — Test CRUD vehicles
+  * `server/src/services/quotation.service.ts` — Test tính toán totalAmount
+
+8.4. API Documentation:
+- Thêm Swagger (swagger-ui-express + swagger-jsdoc)
+- Document tất cả endpoints với request/response examples
+- Serve tại /api/docs
+
+============================================================
+ PHẦN 9: HOÀN THIỆN UI/UX
+============================================================
+
+9.1. Error Boundary cho React:
+- Tạo `ErrorBoundary.tsx` component
+- Wrap toàn bộ app trong ErrorBoundary
+- Hiển thị trang lỗi đẹp với nút "Thử lại"
+
+9.2. Loading States:
+- Thêm Skeleton loader cho tất cả pages đang fetch data
+- Spinner cho form submissions
+- Progress bar cho page navigation (nprogress hoặc custom)
+
+9.3. SEO:
+- Tạo `SEO.tsx` component dùng react-helmet-async
+- Mỗi page set title, description, og:image
+- Tạo sitemap.xml + robots.txt trong public/
+
+9.4. Toast Notification System:
+- Tạo ToastContext + ToastProvider
+- Hiển thị toast cho mọi actions (success, error, warning, info)
+- Auto-dismiss sau 4s
+
+9.5. Responsive Design Audit:
+- Kiểm tra và sửa responsive cho TẤT CẢ pages trên mobile (375px), tablet (768px), desktop (1280px)
+- Đặc biệt: Admin pages cần mobile-friendly (sidebar collapse, table scroll)
+
+============================================================
+ HƯỚNG DẪN SỬ DỤNG PROMPT NÀY
+============================================================
+
+1. Copy từng PHẦN (1-9) và gửi riêng cho AI, hoặc gửi toàn bộ nếu model hỗ trợ context dài.
+2. Với mỗi phần, hãy gửi kèm file hiện tại để AI biết chính xác cần sửa gì.
+3. Ưu tiên: Phần 1 → 2 → 3 → 6 → 4 → 5 → 7 → 8 → 9
+4. Sau mỗi phần, hãy test kỹ trước khi chuyển sang phần tiếp theo.
+
+Chúc bạn hoàn thành đồ án xuất sắc! 🚗✨

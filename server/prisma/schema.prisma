@@ -1,5 +1,4 @@
 // ============================================================
-// 🗃️ Prisma Schema — Nexus Auto Database (MVP Core)
 // 🗃️ Prisma Schema — Nexus Auto Database (Production Dealership)
 // ============================================================
 
@@ -17,18 +16,12 @@ datasource db {
 // ── Enums ─────────────────────────────────────────────────────
 
 enum Role {
-  USER     // Khách hàng tạo tài khoản (nếu có)
-  ADMIN    // Quản lý hệ thống (Gán Lead, Xóa xe)
-  SALES    // Nhân viên bán hàng (Chỉ xem Lead của mình)
   USER     // Khách hàng tạo tài khoản
   ADMIN    // Quản lý hệ thống toàn quyền
   SALES    // Nhân viên bán hàng / tư vấn
 }
 
 enum VehicleStatus {
-  AVAILABLE // Sẵn sàng bán
-  RESERVED  // Đã nhận cọc
-  SOLD      // Đã bán
   AVAILABLE   // Sẵn sàng bán
   RESERVED    // Đã nhận cọc giữ chỗ
   SOLD        // Đã hoàn tất bán
@@ -36,19 +29,16 @@ enum VehicleStatus {
 }
 
 enum VehicleCondition {
-  NEW         // Xe mới 100%
-  USED        // Xe đã qua sử dụng / Xe lướt
+  NEW  // Xe mới 100%
+  USED // Xe đã qua sử dụng / Xe lướt
 }
 
 enum Drivetrain {
-  FWD         // Cầu trước
-  RWD         // Cầu sau
-  AWD         // Bốn bánh toàn thời gian
-  FOUR_WD     // Bốn bánh bán thời gian (4x4)
+  FWD     // Cầu trước
+  RWD     // Cầu sau
+  AWD     // Bốn bánh toàn thời gian
+  FOUR_WD // Bốn bánh bán thời gian (4x4)
 }
-
-// tui cần chỉnh sửa thêm
-
 
 enum LeadType {
   TEST_DRIVE // Lái thử
@@ -60,7 +50,6 @@ enum LeadStatus {
   NEW        // Vừa gửi form
   CONTACTED  // Đã gọi điện
   QUALIFIED  // Khách rất tiềm năng
-  LOST       // Khách đổi ý/Mua chỗ khác
   LOST       // Khách đổi ý / Mua chỗ khác
   CONVERTED  // Chốt sale thành công
 }
@@ -78,22 +67,21 @@ enum Transmission {
 }
 
 enum TestDriveStatus {
-  PENDING    // Chờ xác nhận
-  CONFIRMED  // Đã xác nhận
-  COMPLETED  // Đã hoàn thành
-  CANCELLED  // Đã hủy
+  PENDING   // Chờ xác nhận
+  CONFIRMED // Đã xác nhận
+  COMPLETED // Đã hoàn thành
+  CANCELLED // Đã hủy
 }
 
 enum FinanceStatus {
-  PENDING    // Chờ duyệt
-  APPROVED   // Đã duyệt
-  REJECTED   // Từ chối
-  ACTIVE     // Đang trả góp
-  COMPLETED  // Đã trả xong
+  PENDING   // Chờ duyệt
+  APPROVED  // Đã duyệt
+  REJECTED  // Từ chối
+  ACTIVE    // Đang trả góp
+  COMPLETED // Đã trả xong
 }
 
 enum PaymentMethod {
-  CASH       // Tiền mặt
   CASH          // Tiền mặt
   BANK_TRANSFER // Chuyển khoản
   CREDIT_CARD   // Thẻ tín dụng
@@ -144,12 +132,6 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  myLeads      Lead[]   @relation("CustomerLeads") // Leads do khách hàng tự tạo
-  assignedLeads Lead[]  @relation("SalesLeads")    // Leads được Admin gán cho nhân viên Sales này
-  testDrives   TestDrive[] @relation("TestDriveSales")
-  deposits     Deposit[]    @relation("DepositCreator")
-  quotations   Quotation[]  @relation("QuotationCreator")
-  invoices     Invoice[]    @relation("InvoiceCreator")
   myLeads       Lead[]                @relation("CustomerLeads")
   assignedLeads Lead[]                @relation("SalesLeads")
   testDrives    TestDrive[]           @relation("TestDriveSales")
@@ -170,7 +152,6 @@ model Brand {
   logoUrl  String? @map("logo_url")
   country  String?
 
-  // Relations
   vehicles Vehicle[]
 
   @@map("brands")
@@ -181,30 +162,12 @@ model Category {
   name        String  @unique
   description String?
 
-  // Relations
   vehicles Vehicle[]
 
   @@map("categories")
 }
 
 model Vehicle {
-  id           String        @id @default(uuid())
-  brandId      Int           @map("brand_id")
-  categoryId   Int           @map("category_id")
-  model        String
-  year         Int
-  price        Decimal       @db.Decimal(12, 2)
-  mileage      Int           @default(0)
-  fuelType     FuelType      @map("fuel_type")
-  transmission Transmission
-  color        String
-  engine       String?
-  seats        Int           @default(5)
-  description  String?       @db.Text
-  status       VehicleStatus @default(AVAILABLE)
-  featured     Boolean       @default(false)
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
   id            String           @id @default(uuid())
   vin           String?          @unique
   engineNumber  String?          @map("engine_number")
@@ -212,7 +175,7 @@ model Vehicle {
   brandId       Int              @map("brand_id")
   categoryId    Int              @map("category_id")
   model         String
-  trim          String?          // Phiên bản xe (VD: Titanium 4x4)
+  trim          String?
   year          Int
   condition     VehicleCondition @default(NEW)
   price         Decimal          @db.Decimal(12, 2)
@@ -235,21 +198,12 @@ model Vehicle {
   updatedAt     DateTime         @updatedAt @map("updated_at")
 
   // Relations
-  brand    Brand          @relation(fields: [brandId], references: [id])
-  category Category       @relation(fields: [categoryId], references: [id])
-  images   VehicleImage[]
-  leads    Lead[]
-  testDrives TestDrive[] 
   brand               Brand                @relation(fields: [brandId], references: [id])
   category            Category             @relation(fields: [categoryId], references: [id])
   images              VehicleImage[]
   leads               Lead[]
   testDrives          TestDrive[]
   financeApplications FinanceApplication[]
-  payments Payment[]
-  deposits     Deposit[]
-  quotations   Quotation[]
-  invoices     Invoice[]
   payments            Payment[]
   deposits            Deposit[]
   quotations          Quotation[]
@@ -260,7 +214,6 @@ model Vehicle {
   @@index([status])
   @@index([price])
   @@index([year])
-
   @@index([isDeleted])
   @@map("vehicles")
 }
@@ -272,7 +225,6 @@ model VehicleImage {
   isPrimary Boolean @default(false) @map("is_primary")
   sortOrder Int     @default(0) @map("sort_order")
 
-  // Relations
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
@@ -280,30 +232,20 @@ model VehicleImage {
 }
 
 model Lead {
-  id            String     @id @default(uuid())
-  vehicleId     String?    @map("vehicle_id") // Có thể null (Khách chỉ hỏi chung chung)
-  customerId    String?    @map("customer_id") // ID Khách (Nếu khách có Login)
-  assignedToId  String?    @map("assigned_to_id") // ID Nhân viên Sales chăm sóc
-  
-  // 🔥 Thông tin khách vãng lai (RẤT QUAN TRỌNG)
-  vehicleId     String?    @map("vehicle_id")
-  customerId    String?    @map("customer_id")
-  assignedToId  String?    @map("assigned_to_id")
-  guestName     String?    @map("guest_name")
-  guestPhone    String?    @map("guest_phone")
-  guestEmail    String?    @map("guest_email")
+  id           String     @id @default(uuid())
+  vehicleId    String?    @map("vehicle_id")
+  customerId   String?    @map("customer_id")
+  assignedToId String?    @map("assigned_to_id")
+  guestName    String?    @map("guest_name")
+  guestPhone   String?    @map("guest_phone")
+  guestEmail   String?    @map("guest_email")
+  type         LeadType
+  status       LeadStatus @default(NEW)
+  preferredDate DateTime? @map("preferred_date")
+  notes        String?    @db.Text
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  type          LeadType
-  status        LeadStatus @default(NEW)
-  preferredDate DateTime?  @map("preferred_date")
-  notes         String?    @db.Text
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
-
-  // Relations
-  customer      User?      @relation("CustomerLeads", fields: [customerId], references: [id])
-  assignedTo    User?      @relation("SalesLeads", fields: [assignedToId], references: [id])
-  vehicle       Vehicle?   @relation(fields: [vehicleId], references: [id])
   customer     User?                 @relation("CustomerLeads", fields: [customerId], references: [id])
   assignedTo   User?                 @relation("SalesLeads", fields: [assignedToId], references: [id])
   vehicle      Vehicle?              @relation(fields: [vehicleId], references: [id])
@@ -341,20 +283,6 @@ model TestDrive {
 }
 
 model FinanceApplication {
-  id              String        @id @default(uuid())
-  vehicleId       String        @map("vehicle_id")
-  customerName    String        @map("customer_name")
-  customerPhone   String        @map("customer_phone")
-  customerEmail   String?       @map("customer_email")
-  monthlyIncome   Decimal?      @map("monthly_income") @db.Decimal(12, 2)
-  loanAmount      Decimal       @map("loan_amount") @db.Decimal(12, 2)
-  loanTermMonths  Int           @map("loan_term_months")
-  interestRate    Decimal?      @map("interest_rate") @db.Decimal(5, 2)
-  downPayment     Decimal?      @map("down_payment") @db.Decimal(12, 2)
-  status          FinanceStatus @default(PENDING)
-  notes           String?       @db.Text
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
   id             String        @id @default(uuid())
   vehicleId      String        @map("vehicle_id")
   customerName   String        @map("customer_name")
@@ -377,52 +305,6 @@ model FinanceApplication {
   @@map("finance_applications")
 }
 
-model Payment {
-  id            String        @id @default(uuid())
-  vehicleId     String        @map("vehicle_id")
-  customerName  String        @map("customer_name")
-  customerPhone String        @map("customer_phone")
-  customerEmail String?       @map("customer_email")
-  amount        Decimal       @db.Decimal(12, 2)
-  method        PaymentMethod
-  status        PaymentStatus @default(PENDING)
-  transactionId String?       @map("transaction_id")
-  notes         String?       @db.Text
-  paidAt        DateTime?     @map("paid_at")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-
-  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
-
-  @@map("payments")
-}
-
-// ── Phase 1 Enums ─────────────────────────────────────────────
-
-enum DepositStatus {
-  PENDING
-  CONFIRMED
-  EXPIRED
-  REFUNDED
-}
-
-enum QuotationStatus {
-  DRAFT
-  SENT
-  ACCEPTED
-  REJECTED
-  EXPIRED
-}
-
-enum InvoiceStatus {
-  DRAFT
-  ISSUED
-  PAID
-  CANCELLED
-}
-
-// ── Phase 1 Models ────────────────────────────────────────────
-
 model Deposit {
   id            String        @id @default(uuid())
   vehicleId     String        @map("vehicle_id")
@@ -437,8 +319,6 @@ model Deposit {
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
-  vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
-  createdBy User?   @relation("DepositCreator", fields: [createdById], references: [id])
   vehicle   Vehicle   @relation(fields: [vehicleId], references: [id])
   createdBy User?     @relation("DepositCreator", fields: [createdById], references: [id])
   payments  Payment[]
@@ -494,8 +374,6 @@ model Invoice {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
-  createdBy User?   @relation("InvoiceCreator", fields: [createdById], references: [id])
   vehicle   Vehicle   @relation(fields: [vehicleId], references: [id])
   createdBy User?     @relation("InvoiceCreator", fields: [createdById], references: [id])
   payments  Payment[]
@@ -539,7 +417,7 @@ model Promotion {
   title         String
   description   String?  @db.Text
   imageUrl      String?  @map("image_url")
-  discountType  String   @map("discount_type") // PERCENTAGE | FIXED
+  discountType  String   @map("discount_type")
   discountValue Decimal  @map("discount_value") @db.Decimal(12, 2)
   startDate     DateTime @map("start_date")
   endDate       DateTime @map("end_date")
@@ -577,7 +455,7 @@ model Notification {
   userId    String   @map("user_id")
   title     String
   message   String   @db.Text
-  type      String   // LEAD | TEST_DRIVE | FINANCE | PAYMENT | SYSTEM
+  type      String
   isRead    Boolean  @default(false) @map("is_read")
   linkUrl   String?  @map("link_url")
   createdAt DateTime @default(now()) @map("created_at")
@@ -591,8 +469,8 @@ model Notification {
 model AuditLog {
   id        String   @id @default(uuid())
   userId    String?  @map("user_id")
-  action    String   // CREATE | UPDATE | DELETE | LOGIN
-  entity    String   // Vehicle | Lead | Invoice | Deposit | User
+  action    String
+  entity    String
   entityId  String?  @map("entity_id")
   details   String?  @db.Text
   ipAddress String?  @map("ip_address")
@@ -610,7 +488,7 @@ model CustomerInteraction {
   id        String   @id @default(uuid())
   leadId    String   @map("lead_id")
   userId    String?  @map("user_id")
-  type      String   // CALL | EMAIL | SMS | NOTE | MEETING
+  type      String
   content   String   @db.Text
   createdAt DateTime @default(now()) @map("created_at")
 
